@@ -1,0 +1,67 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "mcp-bridge"
+version = "0.1.0"
+description = "Bridge local MCP servers (FastMCP) to an OpenAI-compatible LLM tool-calling interface."
+authors = [
+  { name = "y-nihat" }
+]
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.9"
+keywords = ["mcp", "llm", "tool-calling", "openai-compatible", "fastmcp"]
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+
+# Runtime dependencies aligned with requirements.txt
+dependencies = [
+  "mcp==1.21.0",
+  "fastmcp==2.13.0.2",
+  "httpx==0.28.1",
+  "requests==2.32.3",
+  "pydantic==2.12.4",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest==7.4.4",
+]
+
+[project.urls]
+Homepage = "https://github.com/y-nihat/mcp"
+Issues = "https://github.com/y-nihat/mcp/issues"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["mcp_bridge*"]
+
+[tool.mypy]
+python_version = "3.9"
+ignore_missing_imports = true
+warn_unused_ignores = true
+warn_redundant_casts = true
+warn_unused_configs = true
+
+[tool.black]
+line-length = 88
+
+[tool.isort]
+profile = "black"
+
+[tool.pytest.ini_options]
+addopts = "-q"
+pythonpath = ["src"]
+
+[tool.mcp-bridge]
+# Custom section for future bridge config introspection
+max_rounds_default = 5
+verbose_default = true
