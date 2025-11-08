@@ -7,34 +7,25 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2025-11-07
 
-### Added
 
 - LLM Service Module (`mcp_llm_server.py`)
   - `chat_completion()` function for full-featured LLM API interactions
   - `simple_chat()` function for quick single-prompt conversations
   - `conversational_chat()` function for multi-turn dialogue management
-- Support for local LLM server integration (OpenAI-compatible API)
-- Configurable LLM parameters:
   - Model selection (default: qwen/qwen3-4b-2507)
   - Temperature control for response randomness
   - Max tokens configuration
-  - Streaming support
 - Comprehensive input validation for LLM requests
   - Message format validation (role and content)
-  - Role validation (system, user, assistant)
   - List type validation
 - `requests` library dependency (version 2.32.3)
 - Example usage in `__main__` block for testing
-- Detailed error handling and logging for LLM operations
-
 ### Features
 
-- **Chat Completion**: Full control over LLM API with all parameters
 - **Simple Chat**: Quick interface for single prompts with optional system messages
 - **Conversational Chat**: Maintains conversation history for multi-turn interactions
 - **OpenAI-Compatible API**: Works with any OpenAI-compatible local LLM server
 - **Error Handling**: Robust validation with clear error messages
-- **Type Safety**: Strong type checking with Python type hints
 
 ### Technical Details
 
@@ -43,6 +34,39 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - OpenAI-compatible chat completions endpoint
 - 60-second timeout for API requests
 - Modular design for easy integration into other projects
+
+## [1.2.0] - 2025-11-08
+
+### Added
+
+- MCP↔LLM Bridge Client (`mcp_llm_bridge_client.py`)
+  - Dynamic discovery of MCP server tools via `list_tools()`
+  - Automatic conversion of MCP tool schemas to OpenAI `tools` specification
+  - Multi-round orchestration with configurable max rounds and verbosity
+  - Structured tool execution with result injection into conversation history
+  - Caching of discovered tools to avoid repeated listing
+- Bridge Demo (`llm_mcp_tool_bridge_demo.py`) now a thin wrapper around the reusable bridge
+- Scenario Test Runner (`test_llm_mcp_bridge_scenarios.py`)
+  - Extensible test case abstraction (`TestCase`)
+  - Multiple math scenarios (basic arithmetic, chained operations, decimals, large numbers)
+  - CLI options: `--basic`, `--math`, `--all`, `--stop-on-failure`
+- Documentation updates in `README.md` for bridge architecture, usage, and test scenarios
+
+### Changed (Bridge)
+
+- Removed prototype playground & debug scripts (tool-call playground and debug demo) in favor of production-ready bridge client and scenario tests
+- `llm_mcp_tool_bridge_demo.py` refactored to use `MCPLLMBridge` instead of inline logic
+
+### Removed (Bridge)
+
+- `llm_tool_playground.py` (replaced by structured bridge + scenarios)
+- `llm_tool_debug_demo.py` (superseded by scenario runner and bridge)
+- `test_llm_tool_playground.py`
+- `test_llm_tool_debug_demo.py`
+
+### Notes
+
+This release embraces MCP's philosophy of dynamic capability discovery and eliminates hardcoded OpenAI tool schemas. Future MCP servers can be integrated without modifying bridge code—only new test cases are needed.
 
 ## [1.0.0] - 2025-11-07
 
