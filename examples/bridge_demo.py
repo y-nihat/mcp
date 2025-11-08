@@ -10,7 +10,7 @@ Purpose:
 
 Requirements:
     - Local LLM server at http://localhost:1234 (OpenAI-compatible)
-    - This repo's math MCP server (mcp_math_server.py)
+    - This repo's math MCP server at src/mcp_bridge/servers/math_server.py
     - dependencies from requirements.txt installed
 
 Usage:
@@ -31,7 +31,27 @@ from typing import List
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-from mcp_llm_bridge_client import MCPLLMBridge, BridgeConfig
+import os
+from pathlib import Path
+
+def _find_repo_root(start: Path) -> Path:
+    """Find repository root by locating a directory that contains 'src'."""
+    p = start
+    for _ in range(5):
+        if (p / "src").exists():
+            return p
+        if p.parent == p:
+            break
+        p = p.parent
+    return start
+
+# Ensure src/ is on path for local execution (works from examples/ as well)
+REPO_ROOT = _find_repo_root(Path(__file__).resolve().parent)
+SRC_PATH = str(REPO_ROOT / "src")
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
+
+from mcp_bridge.bridge.client import MCPLLMBridge, BridgeConfig
 
 
 async def run_bridge(use_stub: bool = False) -> int:
@@ -42,9 +62,16 @@ async def run_bridge(use_stub: bool = False) -> int:
         print("For test scenarios, use: python test_llm_mcp_bridge_scenarios.py")
         print()
 
-    # Start MCP math server over stdio
+    # Start MCP math server over stdio ensuring PYTHONPATH includes src/
+    env = dict(os.environ)
+    existing_pp = env.get("PYTHONPATH", "")
+    parts = [SRC_PATH] + ([existing_pp] if existing_pp else [])
+    env["PYTHONPATH"] = ":".join(parts)
+
     server_params = StdioServerParameters(
-        command="python", args=["mcp_math_server.py"], env=None
+        command="python",
+        args=[str(REPO_ROOT / "src" / "mcp_bridge" / "servers" / "math_server.py")],
+        env=env,
     )
 
     async with stdio_client(server_params) as (read, write):

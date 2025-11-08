@@ -4,8 +4,28 @@ Tests the add and multiply tools with various assertions
 """
 
 import asyncio
+import os
+import sys
+from pathlib import Path
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+
+def _find_repo_root(start: Path) -> Path:
+    """Locate repo root by presence of 'src' directory within a few parent levels."""
+    p = start
+    for _ in range(5):
+        if (p / "src").exists():
+            return p
+        if p.parent == p:
+            break
+        p = p.parent
+    return start
+
+REPO_ROOT = _find_repo_root(Path(__file__).resolve().parent)
+SRC_PATH = str(REPO_ROOT / "src")
+if SRC_PATH not in sys.path:
+    sys.path.insert(0, SRC_PATH)
 
 
 async def test_math_server():
@@ -14,9 +34,14 @@ async def test_math_server():
     print("TESTING MATH MCP SERVER WITH ASSERTIONS")
     print("=" * 70)
 
-    # Setup server connection
+    # Setup server connection using new src/ path
+    math_server_path = REPO_ROOT / "src" / "mcp_bridge" / "servers" / "math_server.py"
+    env = dict(os.environ)
+    existing_pp = env.get("PYTHONPATH", "")
+    parts = [SRC_PATH] + ([existing_pp] if existing_pp else [])
+    env["PYTHONPATH"] = ":".join(parts)
     server_params = StdioServerParameters(
-        command="python", args=["mcp_math_server.py"], env=None
+        command="python", args=[str(math_server_path)], env=env
     )
 
     async with stdio_client(server_params) as (read, write):
