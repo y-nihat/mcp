@@ -19,7 +19,10 @@ def chat_completion(
     temperature: float = 0.7,
     max_tokens: int = -1,
     stream: bool = False,
-) -> str:
+    tools: Optional[List[Dict[str, Any]]] = None,
+    tool_choice: Optional[Any] = None,
+    return_raw: bool = False,
+) -> Any:
     """
     Send a chat completion request to the local LLM server.
 
@@ -53,13 +56,17 @@ def chat_completion(
             raise ValueError(f"Invalid role '{msg['role']}' at index {i}")
 
     # Prepare request payload
-    payload = {
+    payload: Dict[str, Any] = {
         "model": model or DEFAULT_MODEL,
         "messages": messages,
         "temperature": temperature,
         "max_tokens": max_tokens,
         "stream": stream,
     }
+    if tools is not None:
+        payload["tools"] = tools
+    if tool_choice is not None:
+        payload["tool_choice"] = tool_choice
 
     print(f"LLM: Chat completion request to {LLM_API_URL}")
     print(f"LLM: Model: {payload['model']}, Messages: {len(messages)}")
@@ -75,11 +82,19 @@ def chat_completion(
 
         result = response.json()
 
+        if return_raw:
+            return result
+
         # Extract the assistant's message from the response
         if "choices" in result and len(result["choices"]) > 0:
-            assistant_message = result["choices"][0]["message"]["content"]
-            print(f"LLM: Response received ({len(assistant_message)} chars)")
-            return assistant_message
+            assistant = result["choices"][0].get("message", {})
+            content = assistant.get("content")
+            if isinstance(content, str):
+                print(f"LLM: Response received ({len(content)} chars)")
+                return content
+            # If no content (e.g., tool_calls present), return empty string for backward compat
+            # Callers needing structured data should pass return_raw=True.
+            return ""
         else:
             raise ValueError("Unexpected response format from LLM API")
 
