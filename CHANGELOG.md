@@ -35,38 +35,28 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - 60-second timeout for API requests
 - Modular design for easy integration into other projects
 
-## [1.2.0] - 2025-11-08
+## [1.3.0] - 2025-11-09
 
 ### Added
 
-- MCP↔LLM Bridge Client (`mcp_llm_bridge_client.py`)
-  - Dynamic discovery of MCP server tools via `list_tools()`
-  - Automatic conversion of MCP tool schemas to OpenAI `tools` specification
-  - Multi-round orchestration with configurable max rounds and verbosity
-  - Structured tool execution with result injection into conversation history
-  - Caching of discovered tools to avoid repeated listing
-- Bridge Demo (`llm_mcp_tool_bridge_demo.py`) now a thin wrapper around the reusable bridge
-- Scenario Test Runner (`test_llm_mcp_bridge_scenarios.py`)
-  - Extensible test case abstraction (`TestCase`)
-  - Multiple math scenarios (basic arithmetic, chained operations, decimals, large numbers)
-  - CLI options: `--basic`, `--math`, `--all`, `--stop-on-failure`
-- Documentation updates in `README.md` for bridge architecture, usage, and test scenarios
+- To-Do MCP server (`src/mcp_bridge/servers/todo_server.py`) with full CRUD, in-memory and SQLite storage
+- Demo mode for to-do server in `examples/bridge_demo.py --todo`
+- Storage abstraction (`src/mcp_bridge/storage/store.py`) for in-memory and SQLite
+- Persistence tests for to-do server
+- Docs split: main README now points to docs/ folder with modular docs
 
-### Changed (Bridge)
+### Changed
 
-- Removed prototype playground & debug scripts (tool-call playground and debug demo) in favor of production-ready bridge client and scenario tests
-- `llm_mcp_tool_bridge_demo.py` refactored to use `MCPLLMBridge` instead of inline logic
+- All tests now use synchronous wrapper style (`def test_xxx(): asyncio.run(...)`) for consistency
+- Bridge demo refactored: `run_bridge` renamed to `run_math_demo`
 
-### Removed (Bridge)
+### Removed
 
-- `llm_tool_playground.py` (replaced by structured bridge + scenarios)
-- `llm_tool_debug_demo.py` (superseded by scenario runner and bridge)
-- `test_llm_tool_playground.py`
-- `test_llm_tool_debug_demo.py`
+- No breaking removals in this release
 
 ### Notes
 
-This release embraces MCP's philosophy of dynamic capability discovery and eliminates hardcoded OpenAI tool schemas. Future MCP servers can be integrated without modifying bridge code—only new test cases are needed.
+This release adds a robust, testable to-do server with persistent storage and a demo CLI. Documentation is now modular and easier to maintain.
 
 ## [1.0.0] - 2025-11-07
 
