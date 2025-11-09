@@ -7,7 +7,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [1.1.0] - 2025-11-07
 
-
 - LLM Service Module (`mcp_llm_server.py`)
   - `chat_completion()` function for full-featured LLM API interactions
   - `simple_chat()` function for quick single-prompt conversations
@@ -20,6 +19,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   - List type validation
 - `requests` library dependency (version 2.32.3)
 - Example usage in `__main__` block for testing
+
 ### Features
 
 - **Simple Chat**: Quick interface for single prompts with optional system messages
