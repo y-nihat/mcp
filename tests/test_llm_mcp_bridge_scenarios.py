@@ -21,28 +21,6 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 import os
-from pathlib import Path
-
-def _find_repo_root(start: Path) -> Path:
-    """Find repository root by locating a directory that contains 'src'.
-
-    Tries current dir and a few parents to be robust whether run from repo root
-    or from tests/ after we move this file.
-    """
-    p = start
-    for _ in range(5):
-        if (p / "src").exists():
-            return p
-        if p.parent == p:
-            break
-        p = p.parent
-    return start
-
-# Ensure src/ is on the path for local execution without installation
-REPO_ROOT = _find_repo_root(Path(__file__).resolve().parent)
-SRC_PATH = str(REPO_ROOT / "src")
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
 
 from mcp_bridge.bridge.client import MCPLLMBridge, BridgeConfig
 
@@ -52,7 +30,7 @@ from mcp_bridge.bridge.client import MCPLLMBridge, BridgeConfig
 # =============================================================================
 
 
-class TestCase:
+class ScenarioCase:
     """Base class for test scenarios."""
 
     def __init__(
@@ -81,32 +59,11 @@ class TestCase:
         print(f"User prompt: {self.user_prompt}")
         print("-" * 70)
 
-        # Resolve server path if using placeholder token
-        resolved_args = []
-        for a in self.server_args:
-            if a == "__MATH_SERVER_PATH__":
-                resolved_args.append(
-                    str(
-                        REPO_ROOT
-                        / "src"
-                        / "mcp_bridge"
-                        / "servers"
-                        / "math_server.py"
-                    )
-                )
-            else:
-                resolved_args.append(a)
-
-        # Ensure subprocess sees src/ on PYTHONPATH
-        env = dict(os.environ)
-        existing_pp = env.get("PYTHONPATH", "")
-        parts = [SRC_PATH] + ([existing_pp] if existing_pp else [])
-        env["PYTHONPATH"] = ":".join(parts)
-
+        # Server invoked by module name; editable install handles import paths.
         server_params = StdioServerParameters(
             command=self.server_command,
-            args=resolved_args,
-            env=env,
+            args=self.server_args,
+            env=os.environ.copy(),
         )
 
         async with stdio_client(server_params) as (read, write):
@@ -138,49 +95,49 @@ class TestCase:
 # =============================================================================
 
 
-def math_basic_arithmetic() -> TestCase:
+def math_basic_arithmetic() -> ScenarioCase:
     """Basic arithmetic with add and multiply tools."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Basic Arithmetic",
         server_command="python",
-        server_args=["__MATH_SERVER_PATH__"],
+        server_args=["-m", "mcp_bridge.servers.math_server"],
         user_prompt="Compute (3 + 5) * 4 using available tools and explain briefly.",
     )
 
 
-def math_complex_calculation() -> TestCase:
+def math_complex_calculation() -> ScenarioCase:
     """More complex calculation requiring multiple tool calls."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Complex Calculation",
         server_command="python",
-        server_args=["__MATH_SERVER_PATH__"],
+        server_args=["-m", "mcp_bridge.servers.math_server"],
         user_prompt="Calculate ((10 + 20) * 3) + (5 * 7) using tools. Show your work.",
     )
 
 
-def math_sequential_operations() -> TestCase:
+def math_sequential_operations() -> ScenarioCase:
     """Test sequential operations with explanation."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Sequential Operations",
         server_command="python",
-        server_args=["__MATH_SERVER_PATH__"],
+        server_args=["-m", "mcp_bridge.servers.math_server"],
         user_prompt="First add 15, 25, and 10. Then multiply the result by 2. Explain each step.",
     )
 
 
-def math_large_numbers() -> TestCase:
+def math_large_numbers() -> ScenarioCase:
     """Test with large numbers."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Large Numbers",
         server_command="python",
-        server_args=["__MATH_SERVER_PATH__"],
+        server_args=["-m", "mcp_bridge.servers.math_server"],
         user_prompt="Add these numbers: 999999, 1, 500000, 250000. What's the total?",
     )
 
 
-def math_decimals() -> TestCase:
+def math_decimals() -> ScenarioCase:
     """Test with decimal numbers."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Decimal Operations",
         server_command="python",
         server_args=["__MATH_SERVER_PATH__"],
@@ -193,7 +150,7 @@ def math_decimals() -> TestCase:
 # =============================================================================
 
 
-def get_math_test_suite() -> List[TestCase]:
+def get_math_test_suite() -> List[ScenarioCase]:
     """Get all math server test cases."""
     return [
         math_basic_arithmetic(),
@@ -204,7 +161,7 @@ def get_math_test_suite() -> List[TestCase]:
     ]
 
 
-def get_all_test_cases() -> List[TestCase]:
+def get_all_test_cases() -> List[ScenarioCase]:
     """Get all available test cases."""
     return get_math_test_suite()
     # Add more suites here as you develop new MCP servers:
@@ -216,7 +173,7 @@ def get_all_test_cases() -> List[TestCase]:
 # =============================================================================
 
 
-async def run_test_case(test_case: TestCase) -> bool:
+async def run_test_case(test_case: ScenarioCase) -> bool:
     """Run a single test case and return success status."""
     try:
         await test_case.run()
@@ -228,7 +185,7 @@ async def run_test_case(test_case: TestCase) -> bool:
 
 
 async def run_test_suite(
-    test_cases: List[TestCase], stop_on_failure: bool = False
+    test_cases: List[ScenarioCase], stop_on_failure: bool = False
 ) -> Dict[str, Any]:
     """Run a suite of test cases.
 

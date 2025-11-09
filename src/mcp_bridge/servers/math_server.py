@@ -74,5 +74,9 @@ def multiply(numbers: List[float]) -> float:
 
 
 if __name__ == "__main__":
+    import logging
+
+    # Suppress verbose INFO logs from FastMCP server
+    logging.getLogger("mcp").setLevel(logging.WARNING)
     # Start the server with stdio transport
     mcp.run(transport="stdio")
