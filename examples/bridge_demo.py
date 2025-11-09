@@ -31,25 +31,12 @@ from typing import List
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
-import os
 from pathlib import Path
+import os
 
-def _find_repo_root(start: Path) -> Path:
-    """Find repository root by locating a directory that contains 'src'."""
-    p = start
-    for _ in range(5):
-        if (p / "src").exists():
-            return p
-        if p.parent == p:
-            break
-        p = p.parent
-    return start
-
-# Ensure src/ is on path for local execution (works from examples/ as well)
-REPO_ROOT = _find_repo_root(Path(__file__).resolve().parent)
-SRC_PATH = str(REPO_ROOT / "src")
-if SRC_PATH not in sys.path:
-    sys.path.insert(0, SRC_PATH)
+# With the package installed editable (pip install -e .), we no longer need
+# manual sys.path or PYTHONPATH injections. We invoke the math server via
+# its module path using -m. This keeps the demo minimal and mirrors real usage.
 
 from mcp_bridge.bridge.client import MCPLLMBridge, BridgeConfig
 
@@ -62,16 +49,11 @@ async def run_bridge(use_stub: bool = False) -> int:
         print("For test scenarios, use: python test_llm_mcp_bridge_scenarios.py")
         print()
 
-    # Start MCP math server over stdio ensuring PYTHONPATH includes src/
-    env = dict(os.environ)
-    existing_pp = env.get("PYTHONPATH", "")
-    parts = [SRC_PATH] + ([existing_pp] if existing_pp else [])
-    env["PYTHONPATH"] = ":".join(parts)
-
+    # Start MCP math server over stdio by module name (editable install handles path)
     server_params = StdioServerParameters(
         command="python",
-        args=[str(REPO_ROOT / "src" / "mcp_bridge" / "servers" / "math_server.py")],
-        env=env,
+        args=["-m", "mcp_bridge.servers.math_server"],
+        env=os.environ.copy(),
     )
 
     async with stdio_client(server_params) as (read, write):
