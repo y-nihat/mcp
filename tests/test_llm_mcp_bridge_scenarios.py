@@ -30,7 +30,7 @@ from mcp_bridge.bridge.client import MCPLLMBridge, BridgeConfig
 # =============================================================================
 
 
-class TestCase:
+class ScenarioCase:
     """Base class for test scenarios."""
 
     def __init__(
@@ -95,9 +95,9 @@ class TestCase:
 # =============================================================================
 
 
-def math_basic_arithmetic() -> TestCase:
+def math_basic_arithmetic() -> ScenarioCase:
     """Basic arithmetic with add and multiply tools."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Basic Arithmetic",
         server_command="python",
         server_args=["-m", "mcp_bridge.servers.math_server"],
@@ -105,9 +105,9 @@ def math_basic_arithmetic() -> TestCase:
     )
 
 
-def math_complex_calculation() -> TestCase:
+def math_complex_calculation() -> ScenarioCase:
     """More complex calculation requiring multiple tool calls."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Complex Calculation",
         server_command="python",
         server_args=["-m", "mcp_bridge.servers.math_server"],
@@ -115,9 +115,9 @@ def math_complex_calculation() -> TestCase:
     )
 
 
-def math_sequential_operations() -> TestCase:
+def math_sequential_operations() -> ScenarioCase:
     """Test sequential operations with explanation."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Sequential Operations",
         server_command="python",
         server_args=["-m", "mcp_bridge.servers.math_server"],
@@ -125,9 +125,9 @@ def math_sequential_operations() -> TestCase:
     )
 
 
-def math_large_numbers() -> TestCase:
+def math_large_numbers() -> ScenarioCase:
     """Test with large numbers."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Large Numbers",
         server_command="python",
         server_args=["-m", "mcp_bridge.servers.math_server"],
@@ -135,9 +135,9 @@ def math_large_numbers() -> TestCase:
     )
 
 
-def math_decimals() -> TestCase:
+def math_decimals() -> ScenarioCase:
     """Test with decimal numbers."""
-    return TestCase(
+    return ScenarioCase(
         name="Math: Decimal Operations",
         server_command="python",
         server_args=["__MATH_SERVER_PATH__"],
@@ -150,7 +150,7 @@ def math_decimals() -> TestCase:
 # =============================================================================
 
 
-def get_math_test_suite() -> List[TestCase]:
+def get_math_test_suite() -> List[ScenarioCase]:
     """Get all math server test cases."""
     return [
         math_basic_arithmetic(),
@@ -161,7 +161,7 @@ def get_math_test_suite() -> List[TestCase]:
     ]
 
 
-def get_all_test_cases() -> List[TestCase]:
+def get_all_test_cases() -> List[ScenarioCase]:
     """Get all available test cases."""
     return get_math_test_suite()
     # Add more suites here as you develop new MCP servers:
@@ -173,7 +173,7 @@ def get_all_test_cases() -> List[TestCase]:
 # =============================================================================
 
 
-async def run_test_case(test_case: TestCase) -> bool:
+async def run_test_case(test_case: ScenarioCase) -> bool:
     """Run a single test case and return success status."""
     try:
         await test_case.run()
@@ -185,7 +185,7 @@ async def run_test_case(test_case: TestCase) -> bool:
 
 
 async def run_test_suite(
-    test_cases: List[TestCase], stop_on_failure: bool = False
+    test_cases: List[ScenarioCase], stop_on_failure: bool = False
 ) -> Dict[str, Any]:
     """Run a suite of test cases.
 
