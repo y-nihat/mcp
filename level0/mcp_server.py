@@ -5,14 +5,14 @@ mcp = FastMCP("level0-server")
 
 
 @mcp.resource(
-    "resource://info",
-    name="info",
-    title="Static info",
-    description="A static informational resource",
+    "resource://health",
+    name="health",
+    title="Health",
+    description="A static health resource",
 )
-def info() -> str:
-    """Return a static informational string for Level 0."""
-    return "This is a static resource from my MCP server."
+def health() -> str:
+    """Return a static health string for Level 0."""
+    return "This is a static health resource from my MCP server."
 
 
 if __name__ == "__main__":
