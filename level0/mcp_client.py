@@ -29,13 +29,13 @@ async def main() -> None:
             await session.initialize()
             print("Client connected.")
 
-            # Read the static resource (health)
+            # Read the static health resource
             resp = await session.read_resource("resource://health")
             # Response may expose `contents` or `content` depending on transport wrapper
             blocks = getattr(resp, "contents", None) or getattr(resp, "content", [])
 
             if not blocks:
-                print("(no content returned)")
+                print("(no content returned from health resource)")
                 return
 
             first = blocks[0]

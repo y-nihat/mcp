@@ -8,14 +8,14 @@ mcp = FastMCP("level3-server")
 
 
 @mcp.resource(
-    "resource://info",
-    name="info",
-    title="Static info",
-    description="A static informational resource",
+    "resource://health",
+    name="health",
+    title="Health",
+    description="Server health status",
 )
-def info() -> str:
-    """Return a static informational string for Level 3."""
-    return "This is a static resource from my MCP server."
+def health() -> str:
+    """Return a short health status string for Level 3."""
+    return "ok"
 
 
 @mcp.tool()

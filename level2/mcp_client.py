@@ -27,15 +27,15 @@ async def main() -> None:
             await session.initialize()
             print("Client connected.")
 
-            # Read resource://info
-            resp = await session.read_resource("resource://info")
+            # Read resource://health
+            resp = await session.read_resource("resource://health")
             blocks = getattr(resp, "contents", None) or getattr(resp, "content", [])
             if blocks:
                 first = blocks[0]
                 text = getattr(first, "text", None) or str(first)
-                print(text)
+                print(f"Health resource returned: {text}")
             else:
-                print("(no content returned)")
+                print("(no content returned from health resource)")
 
             # Call greet tool
             greet_resp = await session.call_tool("greet", {"name": "CSStudent"})

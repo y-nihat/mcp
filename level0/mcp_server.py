@@ -8,11 +8,11 @@ mcp = FastMCP("level0-server")
     "resource://health",
     name="health",
     title="Health",
-    description="A static health resource",
+    description="Server health status",
 )
 def health() -> str:
-    """Return a static health string for Level 0."""
-    return "This is a static health resource from my MCP server."
+    """Return a short health status string for Level 0."""
+    return "ok"
 
 
 if __name__ == "__main__":
