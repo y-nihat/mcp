@@ -2,7 +2,10 @@ import asyncio
 import os
 import sys
 import json
+import requests
 from pathlib import Path
+from typing import cast, Optional
+from pydantic import AnyUrl
 
 # Ensure repository root is importable
 repo_root = Path(__file__).resolve().parent.parent
@@ -11,6 +14,43 @@ if str(repo_root) not in sys.path:
 
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
+
+
+def call_llm(prompt: str, system_message: Optional[str] = None, temperature: float = 0.7) -> str:
+    """Call LLM directly without tool abstraction."""
+    lm_url = os.environ.get("LMSTUDIO_URL", "http://localhost:1234/v1/chat/completions")
+    model = os.environ.get("LMSTUDIO_MODEL", "qwen/qwen3-4b-2507")
+    
+    messages = []
+    if system_message:
+        messages.append({"role": "system", "content": system_message})
+    messages.append({"role": "user", "content": prompt})
+    
+    payload = {
+        "model": model,
+        "messages": messages,
+        "temperature": temperature,
+        "max_tokens": int(os.environ.get("LMSTUDIO_MAX_TOKENS", 200)),
+        "stream": False,
+    }
+    
+    try:
+        resp = requests.post(lm_url, json=payload, timeout=15)
+        resp.raise_for_status()
+        data = resp.json()
+        
+        choice = data.get("choices", [None])[0]
+        if choice and isinstance(choice.get("message"), dict):
+            result = choice["message"]["content"].strip()
+        elif choice and "text" in choice:
+            result = choice["text"].strip()
+        else:
+            result = str(choice).strip()
+        
+        return result
+        
+    except Exception as exc:
+        return f"[error] LLM call failed: {exc}"
 
 
 async def main() -> None:
@@ -25,85 +65,49 @@ async def main() -> None:
     async with stdio_client(server_params) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            print("Client connected.")
-
-            # Read the static health resource
-            resp = await session.read_resource("resource://health")
+            # Health check
+            resp = await session.read_resource(cast(AnyUrl, "resource://health"))
+            blocks = getattr(resp, "contents", None) or getattr(resp, "content", [])
+            resp = await session.read_resource(cast(AnyUrl, "resource://health"))
             blocks = getattr(resp, "contents", None) or getattr(resp, "content", [])
             if blocks:
                 first = blocks[0]
                 text = getattr(first, "text", None) or str(first)
-                print(f"Health resource returned: {text}")
-            else:
-                print("(no content returned from health resource)")
+                print(f"Health: {text}")
 
-            # Call greet
-            greet_resp = await session.call_tool("greet", {"name": "CSStudent"})
-            gblocks = getattr(greet_resp, "contents", None) or getattr(greet_resp, "content", None) or []
-            if gblocks:
-                gtext = getattr(gblocks[0], "text", None) or str(gblocks[0])
-                print(f"Output from greet tool: {gtext}")
-            else:
-                print(f"Output from greet tool: {getattr(greet_resp, 'text', str(greet_resp))}")
+            # Greet using LLM
+            name = "CSStudent"
+            greet_result = call_llm(
+                prompt=f"Generate a friendly greeting for {name}. Mention MCP. One sentence.",
+                system_message="You are a friendly assistant.",
+                temperature=0.7
+            )
+            print(f"Greet: {greet_result}")
 
-            # Call math add
-            add_resp = await session.call_tool("math", {"a": 3, "b": 4, "operation": "add"})
-            add_val = None
-            ablocks = getattr(add_resp, "contents", None) or getattr(add_resp, "content", None) or []
-            if ablocks:
-                atext = getattr(ablocks[0], "text", None) or str(ablocks[0])
-                try:
-                    parsed = json.loads(atext)
-                    add_val = parsed.get("result") if isinstance(parsed, dict) else parsed
-                except Exception:
-                    try:
-                        obj = eval(atext)
-                        add_val = obj.get("result") if isinstance(obj, dict) else obj
-                    except Exception:
-                        add_val = atext
-            else:
-                add_val = getattr(add_resp, "text", None) or str(add_resp)
+            # Math addition using LLM
+            a, b = 3, 4
+            add_result = call_llm(
+                prompt=f"Calculate {a} + {b}. Return only the number.",
+                system_message="You are a calculator.",
+                temperature=0.0
+            )
+            print(f"Math: {a} + {b} = {add_result}")
 
-            print(f"Output from math add: 3 + 4 = {add_val}")
+            # Math multiplication using LLM
+            a, b = 6, 7
+            mul_result = call_llm(
+                prompt=f"Calculate {a} * {b}. Return only the number.",
+                system_message="You are a calculator.",
+                temperature=0.0
+            )
+            print(f"Math: {a} * {b} = {mul_result}")
 
-            # Call math multiply
-            mul_resp = await session.call_tool("math", {"a": 6, "b": 7, "operation": "multiply"})
-            mul_val = None
-            mblocks = getattr(mul_resp, "contents", None) or getattr(mul_resp, "content", None) or []
-            if mblocks:
-                mtext = getattr(mblocks[0], "text", None) or str(mblocks[0])
-                try:
-                    parsed = json.loads(mtext)
-                    mul_val = parsed.get("result") if isinstance(parsed, dict) else parsed
-                except Exception:
-                    try:
-                        obj = eval(mtext)
-                        mul_val = obj.get("result") if isinstance(obj, dict) else obj
-                    except Exception:
-                        mul_val = mtext
-            else:
-                mul_val = getattr(mul_resp, "text", None) or str(mul_resp)
-
-            print(f"Output from math multiply: 6 * 7 = {mul_val}")
-
-            # Call llm_prompt (this tool calls the local LM Studio HTTP API by default)
-            # You can override the model/URL via environment variables:
-            # LMSTUDIO_URL, LMSTUDIO_MODEL, LMSTUDIO_SYSTEM_MESSAGE
-            llm_resp = await session.call_tool("llm_prompt", {"prompt": "Write a short greeting to CSStudent in 1 sentence."})
-            llm_val = None
-            lblocks = getattr(llm_resp, "contents", None) or getattr(llm_resp, "content", None) or []
-            if lblocks:
-                ltext = getattr(lblocks[0], "text", None) or str(lblocks[0])
-                try:
-                    parsed = json.loads(ltext)
-                    llm_val = parsed.get("result") if isinstance(parsed, dict) else parsed
-                except Exception:
-                    # Not JSON — use raw text
-                    llm_val = ltext
-            else:
-                llm_val = getattr(llm_resp, "text", None) or str(llm_resp)
-
-            print(f"Output from llm_prompt tool: {llm_val}")
+            # Custom prompt using LLM
+            custom_result = call_llm(
+                prompt="Write a short greeting to CSStudent in 1 sentence.",
+                temperature=0.7
+            )
+            print(f"Custom: {custom_result}")
 
 
 if __name__ == "__main__":

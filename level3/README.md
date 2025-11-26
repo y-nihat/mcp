@@ -32,16 +32,16 @@ Example curl (matching the demo defaults):
 
 ```bash
 curl http://localhost:1234/v1/chat/completions \
-	-H "Content-Type: application/json" \
-	-d '{
-		"model": "qwen/qwen3-4b-2507",
-		"messages": [
-			{ "role": "system", "content": "Always answer in rhymes. Today is Thursday" },
-			{ "role": "user", "content": "What day is it today?" }
-		],
-		"temperature": 0.7,
-		"max_tokens": -1,
-		"stream": false
+ -H "Content-Type: application/json" \
+ -d '{
+  "model": "qwen/qwen3-4b-2507",
+  "messages": [
+   { "role": "system", "content": "Always answer in rhymes. Today is Thursday" },
+   { "role": "user", "content": "What day is it today?" }
+  ],
+  "temperature": 0.7,
+  "max_tokens": -1,
+  "stream": false
 }'
 ```
 
