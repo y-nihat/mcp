@@ -10,11 +10,20 @@ from typing import Dict, Any
 from mcp.server.fastmcp import FastMCP
 import os
 from mcp_bridge.storage.store import get_store
+from mcp_bridge.servers.dynamic_registry import get_global_registry
 
 # FastMCP server instance
 mcp = FastMCP("todo-server")
 
 store = get_store()
+
+# Get dynamic tool registry
+registry = get_global_registry()
+
+# Register all todo tools
+registry.register_tool("create_todo", enabled=True)
+registry.register_tool("update_todo", enabled=True)
+registry.register_tool("delete_todo", enabled=True)
 
 
 @mcp.resource(
@@ -66,7 +75,11 @@ def create_todo(title: str) -> str:
 
     Raises:
         ValueError: If title is empty or only whitespace.
+        RuntimeError: If tool is disabled.
     """
+    if not registry.is_tool_enabled("create_todo"):
+        raise RuntimeError("Tool 'create_todo' is currently disabled")
+
     if not isinstance(title, str):
         raise ValueError("title must be a string")
     todo_id = store.create(title)
@@ -84,7 +97,13 @@ def update_todo(
         item_id: ID of the to-do.
         title: Optional new title.
         completed: Optional new completed flag.
+
+    Raises:
+        RuntimeError: If tool is disabled.
     """
+    if not registry.is_tool_enabled("update_todo"):
+        raise RuntimeError("Tool 'update_todo' is currently disabled")
+
     if not isinstance(item_id, int):
         raise ValueError("item_id must be an integer")
     if title is None and completed is None:
@@ -95,10 +114,72 @@ def update_todo(
 
 @mcp.tool()
 def delete_todo(item_id: int) -> dict[str, Any]:
-    """Delete a to-do item and return the removed item."""
+    """Delete a to-do item and return the removed item.
+
+    Raises:
+        RuntimeError: If tool is disabled.
+    """
+    if not registry.is_tool_enabled("delete_todo"):
+        raise RuntimeError("Tool 'delete_todo' is currently disabled")
+
     if not isinstance(item_id, int):
         raise ValueError("item_id must be an integer")
     return store.delete(item_id)
+
+
+@mcp.tool()
+def set_todo_tool_enabled(tool_name: str, enabled: bool) -> str:
+    """
+    Enable or disable a todo tool dynamically without restart.
+
+    Args:
+        tool_name: Name of the tool ('create_todo', 'update_todo', or 'delete_todo')
+        enabled: True to enable, False to disable
+
+    Returns:
+        Status message
+
+    Raises:
+        ValueError: If tool_name is invalid
+    """
+    valid_tools = {"create_todo", "update_todo", "delete_todo"}
+    if tool_name not in valid_tools:
+        raise ValueError(
+            f"Invalid tool name: {tool_name}. Must be one of {valid_tools}"
+        )
+
+    if enabled:
+        registry.enable_tool(tool_name)
+        return f"Tool '{tool_name}' is now ENABLED"
+    else:
+        registry.disable_tool(tool_name)
+        return f"Tool '{tool_name}' is now DISABLED"
+
+
+@mcp.tool()
+def get_todo_tool_status() -> dict:
+    """
+    Get the current status of all registered todo tools.
+
+    Returns:
+        Dictionary with tool status information
+    """
+    stats = registry.get_stats()
+    enabled_tools = list(registry.get_enabled_tools())
+    all_tools = registry.get_all_tools()
+
+    tool_details = {}
+    for name, metadata in all_tools.items():
+        tool_details[name] = {
+            "enabled": metadata.enabled,
+            "last_modified": metadata.last_modified,
+        }
+
+    return {
+        "stats": stats,
+        "enabled_tools": enabled_tools,
+        "tool_details": tool_details,
+    }
 
 
 if __name__ == "__main__":
