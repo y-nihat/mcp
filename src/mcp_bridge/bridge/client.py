@@ -30,6 +30,7 @@ class BridgeConfig:
     )
     max_rounds: int = 5
     verbose: bool = True
+    enable_dynamic_tools: bool = True  # Auto-detect tool changes without restart
 
 
 class MCPLLMBridge:
@@ -37,8 +38,17 @@ class MCPLLMBridge:
         self.session = session
         self.config = config or BridgeConfig()
         self._tools_cache: Optional[List[Dict[str, Any]]] = None
+        self._last_tool_count: int = 0  # Track tool count for change detection
 
     async def discover_tools(self, force_refresh: bool = False) -> List[Dict[str, Any]]:
+        """Discover available MCP tools.
+
+        Args:
+            force_refresh: Force cache refresh even if cache exists
+
+        Returns:
+            List of tool specifications in OpenAI format
+        """
         if self._tools_cache is not None and not force_refresh:
             return self._tools_cache
 
@@ -46,7 +56,7 @@ class MCPLLMBridge:
         resp = await self.session.list_tools()
         mcp_tools = getattr(resp, "tools", []) or []
 
-        if self.config.verbose:
+        if self.config.verbose and (force_refresh or self._tools_cache is None):
             print(f"Discovered {len(mcp_tools)} MCP tools:")
             for t in mcp_tools:
                 print(f"  - {getattr(t, 'name', 'Unknown')}")
@@ -74,7 +84,50 @@ class MCPLLMBridge:
             )
 
         self._tools_cache = tools_spec
+        self._last_tool_count = len(tools_spec)
         return tools_spec
+
+    async def check_tool_changes(self) -> bool:
+        """Check if tools have changed on the server.
+
+        Returns:
+            True if tools have changed and cache should be refreshed
+        """
+        if not self.config.enable_dynamic_tools:
+            return False
+
+        try:
+            resp = await self.session.list_tools()
+            current_tools = getattr(resp, "tools", []) or []
+            current_count = len(current_tools)
+
+            # Check if tool count changed
+            if current_count != self._last_tool_count:
+                if self.config.verbose:
+                    print(
+                        f"Tool count changed: {self._last_tool_count} → {current_count}"
+                    )
+                return True
+
+            # Check if tool names changed (could be same count but different tools)
+            if self._tools_cache:
+                cached_names = {tool["function"]["name"] for tool in self._tools_cache}
+                current_names = {getattr(t, "name", None) for t in current_tools}
+                if cached_names != current_names:
+                    if self.config.verbose:
+                        added = current_names - cached_names
+                        removed = cached_names - current_names
+                        if added:
+                            print(f"Tools added: {added}")
+                        if removed:
+                            print(f"Tools removed: {removed}")
+                    return True
+
+            return False
+        except Exception as e:  # noqa: BLE001
+            if self.config.verbose:
+                print(f"Warning: Tool change detection failed: {e}")
+            return False
 
     def extract_tool_calls(self, full_response: Dict[str, Any]) -> List[ToolCall]:
         calls: List[ToolCall] = []
@@ -129,7 +182,21 @@ class MCPLLMBridge:
 
         for round_num in range(self.config.max_rounds):
             rounds += 1
+
+            # Check for tool changes before each round (dynamic awareness)
+            if use_tools and self.config.enable_dynamic_tools and round_num > 0:
+                if await self.check_tool_changes():
+                    if self.config.verbose:
+                        print("\n[Tool changes detected - refreshing cache]")
+                    await self.discover_tools(force_refresh=True)
+
             if use_tools and round_num == 0:
+                tools = await self.discover_tools()
+                if self.config.verbose:
+                    print(f"\n[Round {round_num + 1}] Requesting LLM with tools...")
+                full_response = chat_completion(messages, tools=tools, return_raw=True)
+            elif use_tools and round_num > 0:
+                # Use cached tools (may have been refreshed above)
                 tools = await self.discover_tools()
                 if self.config.verbose:
                     print(f"\n[Round {round_num + 1}] Requesting LLM with tools...")
